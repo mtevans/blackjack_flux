@@ -21427,20 +21427,162 @@
 
 	'use strict';
 	
-	var React = __webpack_require__(1);
+	var React = __webpack_require__(1),
+	    Deck = __webpack_require__(173),
+	    UserHand = __webpack_require__(175),
+	    DealerHand = __webpack_require__(176);
 	
-	var blackjack = React.createClass({
-	  displayName: 'blackjack',
+	var Blackjack = React.createClass({
+	  displayName: 'Blackjack',
 	  render: function render() {
 	    return React.createElement(
 	      'div',
 	      null,
-	      'Welcome to Blackjack'
+	      'Welcome to Blackjack',
+	      React.createElement(Deck, null),
+	      React.createElement(UserHand, null),
+	      React.createElement(DealerHand, null)
 	    );
 	  }
 	});
 	
-	module.exports = blackjack;
+	module.exports = Blackjack;
+
+/***/ },
+/* 173 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	var React = __webpack_require__(1);
+	var Cards = __webpack_require__(174);
+	
+	var Deck = React.createClass({
+	  displayName: 'Deck',
+	  getInitialState: function getInitialState() {
+	    return {
+	      cards: this.dealCards(),
+	      dealt: []
+	    };
+	  },
+	  dealCards: function dealCards() {
+	    var deckInProgress = [];
+	    Cards.suits.forEach(function (suit) {
+	      Cards.values.forEach(function (value) {
+	        deckInProgress.push({ suit: suit, value: value });
+	      });
+	    });
+	    return this.shuffleCards(deckInProgress);
+	  },
+	  shuffleCards: function shuffleCards(deck) {
+	    // fisher-yates shuffle (https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle)
+	    for (var i = 0; i < deck.length; i++) {
+	      var random = Math.floor(Math.random() * (deck.length - i) + i);
+	      if (i > random) {
+	        console.log("shuffle not working");
+	      }
+	      var hold = deck[i];
+	      deck[i] = deck[random];
+	      deck[random] = hold;
+	    }
+	    return deck;
+	  },
+	  reset: function reset() {
+	    var newDeck = this.state.cards.concat(this.state.dealt);
+	    this.setState({
+	      cards: this.shuffleCards(newDeck),
+	      dealt: []
+	    });
+	  },
+	  dealCard: function dealCard() {
+	    console.log('handle deal');
+	    var card = this.state.cards.pop();
+	    this.state.dealt.push(card);
+	  },
+	  resetGame: function resetGame() {
+	    console.log('reset game');
+	    this.reset();
+	  },
+	  hold: function hold() {
+	    console.log("holding");
+	  },
+	  render: function render() {
+	    return React.createElement(
+	      'div',
+	      null,
+	      React.createElement(
+	        'button',
+	        { onClick: this.dealCard },
+	        'Deal'
+	      ),
+	      React.createElement(
+	        'button',
+	        { onClick: this.resetGame },
+	        'NewGame'
+	      ),
+	      React.createElement(
+	        'button',
+	        { onClick: this.hold },
+	        'Hold'
+	      )
+	    );
+	  }
+	});
+	
+	module.exports = Deck;
+
+/***/ },
+/* 174 */
+/***/ function(module, exports) {
+
+	"use strict";
+	
+	module.exports = {
+	  suits: ["hearts", "diamonds", "clubs", "spades"],
+	  values: ["ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "jack", "queen", "king"]
+	};
+
+/***/ },
+/* 175 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	var React = __webpack_require__(1);
+	
+	var userHand = React.createClass({
+	  displayName: 'userHand',
+	  render: function render() {
+	    return React.createElement(
+	      'div',
+	      null,
+	      'Users hand'
+	    );
+	  }
+	});
+	
+	module.exports = userHand;
+
+/***/ },
+/* 176 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	var React = __webpack_require__(1);
+	
+	var dealerHand = React.createClass({
+	  displayName: 'dealerHand',
+	  render: function render() {
+	    return React.createElement(
+	      'div',
+	      null,
+	      'Dealers hand'
+	    );
+	  }
+	});
+	
+	module.exports = dealerHand;
 
 /***/ }
 /******/ ]);

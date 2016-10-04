@@ -1,6 +1,6 @@
 var React = require ('react'),
     ReactDOM = require('react-dom'),
-    Blackjack = require('./blackjack');
+    Blackjack = require('./components/blackjack');
 
 
 document.addEventListener('DOMContentLoaded', function(){
