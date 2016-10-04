@@ -1,7 +1,8 @@
 var React = require('react'),
-    Deck = require('./deck.jsx'),
-    UserHand = require('./user_hand.jsx'),
-    DealerHand = require('./dealer_hand.jsx');
+    Deck = require('./deck'),
+    UserHand = require('./user_hand'),
+    DealerHand = require('./dealer_hand'),
+    Card_Actions = require('../actions/cards_actions')
 
 
 var Blackjack = React.createClass({

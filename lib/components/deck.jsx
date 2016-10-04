@@ -37,7 +37,7 @@ var Deck = React.createClass({
       cards: this.shuffleCards(newDeck),
       dealt: [],
     })
-},
+  },
 
   dealCard(){
       console.log('handle deal')
@@ -53,7 +53,7 @@ var Deck = React.createClass({
   hold(){
     console.log("holding")
   },
-  
+
   render(){
     return(
       <div>
