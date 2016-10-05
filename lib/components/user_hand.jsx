@@ -31,7 +31,8 @@ var userHand = React.createClass({
       hand.forEach(card => {
         var value = card.value
         var suit = card.suit
-        toReturn.push(<div key={value + " " + suit}>{value} of {suit}</div>)
+        var path = './images/cards/' + value + '_of_' + suit + '.png'
+        toReturn.push(<img className="card" key={value + " " + suit} src={path} />)
       })
     }
     return toReturn

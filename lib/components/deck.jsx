@@ -12,7 +12,8 @@ var Deck = React.createClass({
       UserScore: 0,
       DealerScore: 0,
       hold: false,
-      gameOver: false
+      gameOver: false,
+      start: true,
     }
   },
   // listen for changes to various hands
@@ -22,16 +23,17 @@ var Deck = React.createClass({
   },
   // no need for componenentWillUnmount as this component always showing
   _onUserHandChange(){
-    var newHand = UserHandStore.getHand()
-    var userScore = this.generateScore(newHand)
-    var newHold = false
-    if (userScore > 21){ // if player is over 21, make hold true and trigger dealer moves
-      newHold = true
+    var newHand = UserHandStore.getHand();
+    var userScore = this.generateScore(newHand);
+    var newHold = false;
+    if (userScore > 21){ // if UserScore is over 21, imitate hold move which will trigger dealer moves
+      newHold = true;
     }
     this.setState({
         userHand: newHand,
         UserScore: userScore,
         hold: newHold,
+        start: false
     })
   },
 
@@ -42,28 +44,6 @@ var Deck = React.createClass({
         dealerHand: newHand,
         DealerScore: dealerScore
     })
-  },
-
-  isDealersTurn(){
-    var UserScore = this.state.UserScore
-    var DealerScore = this.state.DealerScore
-    if(UserScore > 21 && DealerScore < 16 ){
-      return true
-    } else if(UserScore <= 21 && DealerScore < UserScore){
-      return true
-    } else {
-      return false
-    }
-  },
-
-  dealCards(){
-      var deckInProgress = [];
-      Cards.suits.forEach(suit => {
-        Cards.values.forEach(value =>{
-          deckInProgress.push({suit: suit, value: value})
-        })
-      })
-    return this.shuffleCards(deckInProgress)
   },
 
   generateScore(hand){
@@ -83,19 +63,29 @@ var Deck = React.createClass({
       score -= 10;
       aceCount -= 1;
     }
-    return score
+    return score;
   },
 
 
+  dealCards(){
+      var deckInProgress = [];
+      Cards.suits.forEach(suit => {
+        Cards.values.forEach(value =>{
+          deckInProgress.push({suit: suit, value: value});
+        })
+      })
+    return this.shuffleCards(deckInProgress);
+  },
+
   shuffleCards(deck){  // fisher-yates shuffle (https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle)
     for (var i = 0; i < deck.length; i++) {
-      var random = Math.floor((Math.random() * (deck.length - i)) + i)
+      var random = Math.floor((Math.random() * (deck.length - i)) + i);
       if(i > random){ console.log("shuffle not working") }
-      var hold = deck[i]
-      deck[i] = deck[random]
-      deck[random] = hold
+      var hold = deck[i];
+      deck[i] = deck[random];
+      deck[random] = hold;
     }
-    return deck
+    return deck;
   },
 
   reset(){
@@ -107,62 +97,87 @@ var Deck = React.createClass({
       DealerScore: 0,
       gameOver: false,
       hold: false,
+      start: true
     })
   },
 
   dealCard(id){
-      var card = this.state.cards.pop()
-      this.state.dealt.push(card)
-      CardsActions.dealCard(card, id)
+      var card = this.state.cards.pop();
+      this.state.dealt.push(card);
+      CardsActions.dealCard(card, id);
   },
 
   dealUserCard(){
-    this.dealCard("USER")
+    this.dealCard("USER");
   },
 
   newGame(){
-    this.props.newGame()
-    this.reset()
+    this.props.newGame();
+    this.reset();
   },
 
   firstDeal(){
-    this.dealCard("USER")
-    this.dealCard("DEALER")
+    this.dealCard("USER");
+    this.dealCard("DEALER");
   },
 
   hold(){
-    this.dealCard("DEALER")
-    this.setState({hold: true})
+    this.dealCard("DEALER");
+    this.setState({hold: true});
+  },
+
+  isDealersTurn(){ // dealer must take card if less than 17
+    var UserScore = this.state.UserScore;
+    var DealerScore = this.state.DealerScore;
+    if(DealerScore < 17 ){
+      return true;
+    } else {
+      return false;
+    }
   },
 
   findWinner(){
-    var UserScore = this.state.UserScore
-    var DealerScore = this.state.DealerScore
+    var UserScore = this.state.UserScore;
+    var DealerScore = this.state.DealerScore;
     if((UserScore > 21 && DealerScore > 21) || UserScore === DealerScore){
-      return "There is no Winner"
-    } else if(UserScore > DealerScore){
-      return "Congratulations, You WON"
+      return "There is no Winner";
+    } else if (DealerScore < 21 && UserScore > 21){
+      return "You Lose";
+    }else if((UserScore <= 21 && DealerScore > 21) || UserScore > DealerScore){
+      return "Congratulations, You WON";
     } else {
-      return "You Lose"
+      return "You Lose";
     }
   },
 
-  render(){
-    var message = ""
-    if(this.isDealersTurn() && this.state.hold){
-      setTimeout(()=>{ this.dealCard("DEALER")}, 750)
-    } else if (this.state.hold){
-      message = this.findWinner()
+  renderButtons(){
+    if(this.state.gameOver){
+      return (<div><button onClick={this.newGame}>NewGame</button></div>)
+    } else if(this.state.start){
+      return(<div><button onClick={this.firstDeal}>Start Game</button></div>)
+    } else if(this.state.hold){
+      return(<div><button onClick={this.newGame}>NewGame</button></div>)
+    } else {
+      return( <div><button onClick={this.dealUserCard}>Hit Me !!</button>,
+              <button onClick={this.newGame}>NewGame</button>,
+              <button onClick={this.hold}>Hold</button></div> )
     }
-
+  },
+  
+  render(){
+    var message = "";
+    if(this.isDealersTurn() && this.state.hold){
+      setTimeout(()=>{ this.dealCard("DEALER")}, 750) // the timeout is for suspense
+    } else if (this.state.hold){
+      this.state.gameOver = true;
+      message = this.findWinner();
+    }
+    var buttons = this.renderButtons()
     return(
       <div>
         <p>DealerScore = {this.state.DealerScore}</p>
         <p>UserScore = {this.state.UserScore}</p>
-        <button onClick={this.firstDeal}>Start Game</button>
-        <button onClick={this.dealUserCard}>Hit Me !!</button>
-        <button onClick={this.newGame}>NewGame</button>
-        <button onClick={this.hold}>Hold</button>
+        {buttons}
         {message}
       </div>
     )
