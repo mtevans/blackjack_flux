@@ -2,15 +2,20 @@ var React = require('react'),
     Deck = require('./deck'),
     UserHand = require('./user_hand'),
     DealerHand = require('./dealer_hand'),
-    Card_Actions = require('../actions/cards_actions')
+    CardActions = require('../actions/cards_actions'),
+    Cards = require('../constants/cards');
 
 
 var Blackjack = React.createClass({
+  newGame(){
+    CardActions.newGame()
+  },
+
   render(){
     return(
       <div>
         Welcome to Blackjack
-        <Deck/>
+        <Deck newGame={this.newGame}/>
         <UserHand/>
         <DealerHand/>
       </div>

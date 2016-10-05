@@ -21431,16 +21431,20 @@
 	    Deck = __webpack_require__(173),
 	    UserHand = __webpack_require__(175),
 	    DealerHand = __webpack_require__(177),
-	    Card_Actions = __webpack_require__(179);
+	    CardActions = __webpack_require__(179),
+	    Cards = __webpack_require__(174);
 	
 	var Blackjack = React.createClass({
 	  displayName: 'Blackjack',
+	  newGame: function newGame() {
+	    CardActions.newGame();
+	  },
 	  render: function render() {
 	    return React.createElement(
 	      'div',
 	      null,
 	      'Welcome to Blackjack',
-	      React.createElement(Deck, null),
+	      React.createElement(Deck, { newGame: this.newGame }),
 	      React.createElement(UserHand, null),
 	      React.createElement(DealerHand, null)
 	    );
@@ -21455,16 +21459,64 @@
 
 	'use strict';
 	
-	var React = __webpack_require__(1);
-	var Cards = __webpack_require__(174);
+	var React = __webpack_require__(1),
+	    Cards = __webpack_require__(174),
+	    CardsActions = __webpack_require__(179),
+	    UserHandStore = __webpack_require__(176),
+	    DealerHandStore = __webpack_require__(178);
 	
 	var Deck = React.createClass({
 	  displayName: 'Deck',
 	  getInitialState: function getInitialState() {
 	    return {
 	      cards: this.dealCards(),
-	      dealt: []
+	      dealt: [],
+	      UserScore: 0,
+	      DealerScore: 0,
+	      hold: false,
+	      gameOver: false
 	    };
+	  },
+	
+	  // listen for changes to various hands
+	  componentDidMount: function componentDidMount() {
+	    this.userHandListener = UserHandStore.addListener(this._onUserHandChange);
+	    this.dealerHandListener = DealerHandStore.addListener(this._onDealerHandChange);
+	  },
+	
+	  // no need for componenentWillUnmount as this component always showing
+	  _onUserHandChange: function _onUserHandChange() {
+	    var newHand = UserHandStore.getHand();
+	    var userScore = this.generateScore(newHand);
+	    var newHold = false;
+	    if (userScore > 21) {
+	      // if player is over 21, make hold true and trigger dealer moves
+	      newHold = true;
+	    }
+	    this.setState({
+	      userHand: newHand,
+	      UserScore: userScore,
+	      hold: newHold
+	    });
+	  },
+	  _onDealerHandChange: function _onDealerHandChange() {
+	    var newHand = DealerHandStore.getHand();
+	    var dealerScore = this.generateScore(newHand);
+	    this.setState({
+	      dealerHand: newHand,
+	      DealerScore: dealerScore
+	    });
+	  },
+	  isDealersTurn: function isDealersTurn() {
+	    var UserScore = this.state.UserScore;
+	    var DealerScore = this.state.DealerScore;
+	    if (UserScore > 21 && DealerScore < 16) {
+	      return true;
+	    } else if (UserScore <= 21 && DealerScore < UserScore) {
+	      return true;
+	    } else {
+	      return false;
+	    }
 	  },
 	  dealCards: function dealCards() {
 	    var deckInProgress = [];
@@ -21474,6 +21526,26 @@
 	      });
 	    });
 	    return this.shuffleCards(deckInProgress);
+	  },
+	  generateScore: function generateScore(hand) {
+	    var score = 0;
+	    var aceCount = 0;
+	    hand.forEach(function (card) {
+	      if (card.value === "ace") {
+	        score += 11;
+	        aceCount += 1; // count aces, if over 21, will change value of ace value to 1 later.
+	      } else if (Cards.royals[card.value]) {
+	        score += 10;
+	      } else {
+	        score += parseInt(card.value);
+	      }
+	    });
+	    while (score > 21 && aceCount > 0) {
+	      // if hand has aces, if count aces as 1 will get under 21
+	      score -= 10;
+	      aceCount -= 1;
+	    }
+	    return score;
 	  },
 	  shuffleCards: function shuffleCards(deck) {
 	    // fisher-yates shuffle (https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle)
@@ -21492,40 +21564,92 @@
 	    var newDeck = this.state.cards.concat(this.state.dealt);
 	    this.setState({
 	      cards: this.shuffleCards(newDeck),
-	      dealt: []
+	      dealt: [],
+	      UserScore: 0,
+	      DealerScore: 0,
+	      gameOver: false,
+	      hold: false
 	    });
 	  },
-	  dealCard: function dealCard() {
-	    console.log('handle deal');
+	  dealCard: function dealCard(id) {
 	    var card = this.state.cards.pop();
 	    this.state.dealt.push(card);
+	    CardsActions.dealCard(card, id);
 	  },
-	  resetGame: function resetGame() {
-	    console.log('reset game');
+	  dealUserCard: function dealUserCard() {
+	    this.dealCard("USER");
+	  },
+	  newGame: function newGame() {
+	    this.props.newGame();
 	    this.reset();
 	  },
+	  firstDeal: function firstDeal() {
+	    this.dealCard("USER");
+	    this.dealCard("DEALER");
+	  },
 	  hold: function hold() {
-	    console.log("holding");
+	    this.dealCard("DEALER");
+	    this.setState({ hold: true });
+	  },
+	  findWinner: function findWinner() {
+	    var UserScore = this.state.UserScore;
+	    var DealerScore = this.state.DealerScore;
+	    if (UserScore > 21 && DealerScore > 21 || UserScore === DealerScore) {
+	      return "There is no Winner";
+	    } else if (UserScore > DealerScore) {
+	      return "Congratulations, You WON";
+	    } else {
+	      return "You Lose";
+	    }
 	  },
 	  render: function render() {
+	    var _this = this;
+	
+	    var message = "";
+	    if (this.isDealersTurn() && this.state.hold) {
+	      setTimeout(function () {
+	        _this.dealCard("DEALER");
+	      }, 750);
+	    } else if (this.state.hold) {
+	      message = this.findWinner();
+	    }
+	
 	    return React.createElement(
 	      'div',
 	      null,
 	      React.createElement(
-	        'button',
-	        { onClick: this.dealCard },
-	        'Deal'
+	        'p',
+	        null,
+	        'DealerScore = ',
+	        this.state.DealerScore
+	      ),
+	      React.createElement(
+	        'p',
+	        null,
+	        'UserScore = ',
+	        this.state.UserScore
 	      ),
 	      React.createElement(
 	        'button',
-	        { onClick: this.resetGame },
+	        { onClick: this.firstDeal },
+	        'Start Game'
+	      ),
+	      React.createElement(
+	        'button',
+	        { onClick: this.dealUserCard },
+	        'Hit Me !!'
+	      ),
+	      React.createElement(
+	        'button',
+	        { onClick: this.newGame },
 	        'NewGame'
 	      ),
 	      React.createElement(
 	        'button',
 	        { onClick: this.hold },
 	        'Hold'
-	      )
+	      ),
+	      message
 	    );
 	  }
 	});
@@ -21540,7 +21664,8 @@
 	
 	module.exports = {
 	  suits: ["hearts", "diamonds", "clubs", "spades"],
-	  values: ["ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "jack", "queen", "king"]
+	  values: ["ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "jack", "queen", "king"],
+	  royals: { "king": true, "queen": true, "jack": true }
 	};
 
 /***/ },
@@ -21550,13 +21675,15 @@
 	'use strict';
 	
 	var React = __webpack_require__(1),
-	    UserHandStore = __webpack_require__(176);
+	    UserHandStore = __webpack_require__(176),
+	    Cards = __webpack_require__(174);
 	
 	var userHand = React.createClass({
 	  displayName: 'userHand',
 	  getInitialState: function getInitialState() {
 	    return {
-	      hand: UserHandStore.getHand()
+	      hand: UserHandStore.getHand(),
+	      turnOver: false
 	    };
 	  },
 	  componentDidMount: function componentDidMount() {
@@ -21568,11 +21695,41 @@
 	  _onHandChange: function _onHandChange() {
 	    this.setState({ hand: UserHandStore.getHand() });
 	  },
+	  renderHand: function renderHand() {
+	    var hand = this.state.hand;
+	    var toReturn = [];
+	    if (!hand.length) {
+	      return [];
+	    } else {
+	      hand.forEach(function (card) {
+	        var value = card.value;
+	        var suit = card.suit;
+	        toReturn.push(React.createElement(
+	          'div',
+	          { key: value + " " + suit },
+	          value,
+	          ' of ',
+	          suit
+	        ));
+	      });
+	    }
+	    return toReturn;
+	  },
 	  render: function render() {
+	    var hand = this.renderHand();
 	    return React.createElement(
 	      'div',
 	      null,
-	      'Users hand'
+	      React.createElement(
+	        'p',
+	        null,
+	        'UserHand'
+	      ),
+	      React.createElement(
+	        'div',
+	        null,
+	        hand
+	      )
 	    );
 	  }
 	});
@@ -21600,12 +21757,10 @@
 	      _handleDeal(payload.card);
 	      this.__emitChange();
 	      break;
-	
 	    case CardConstants.RESETGAME:
 	      _handleReset();
 	      this.__emitChange();
 	      break;
-	
 	    case CardConstants.FIRSTDEAL:
 	      _handleDeal(payload.cards.userCard);
 	      this.__emitChange();
@@ -21652,11 +21807,41 @@
 	  _onHandChange: function _onHandChange() {
 	    this.setState({ hand: DealerHandStore.getHand() });
 	  },
+	  renderCards: function renderCards() {
+	    var cards = this.state.hand;
+	    var toReturn = [];
+	    if (!cards.length) {
+	      return [];
+	    } else {
+	      cards.forEach(function (card) {
+	        var value = card.value;
+	        var suit = card.suit;
+	        toReturn.push(React.createElement(
+	          'div',
+	          { key: value + " " + suit },
+	          value,
+	          ' of ',
+	          suit
+	        ));
+	      });
+	    }
+	    return toReturn;
+	  },
 	  render: function render() {
+	    var cards = this.renderCards();
 	    return React.createElement(
 	      'div',
 	      null,
-	      'Dealers hand'
+	      React.createElement(
+	        'p',
+	        null,
+	        'DealerHand'
+	      ),
+	      React.createElement(
+	        'div',
+	        null,
+	        cards
+	      )
 	    );
 	  }
 	});
@@ -21734,16 +21919,9 @@
 	      card: card
 	    });
 	  },
-	  firsDeal: function firsDeal(cards) {
+	  newGame: function newGame() {
 	    Dispatcher.dispatch({
-	      actionType: CardConstants.FIRSTDEAL,
-	      cards: cards
-	    });
-	  },
-	  resetGame: function resetGame() {
-	    Dispatcher.dispatch({
-	      actionType: CardConstants.RESETGAME,
-	      card: card
+	      actionType: CardConstants.RESETGAME
 	    });
 	  }
 	};
@@ -21752,35 +21930,19 @@
 
 /***/ },
 /* 180 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
-	/* WEBPACK VAR INJECTION */(function(module) {"use strict";
+	"use strict";
 	
-	module.export = {
+	module.exports = {
 	  DEALUSER: "DEALUSER",
 	  DEALDEALER: "DEALDEALER",
 	  RESETGAME: "RESETGAME",
 	  FIRSTDEAL: "FIRSTDEAL"
 	};
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(181)(module)))
 
 /***/ },
-/* 181 */
-/***/ function(module, exports) {
-
-	module.exports = function(module) {
-		if(!module.webpackPolyfill) {
-			module.deprecate = function() {};
-			module.paths = [];
-			// module.parent = undefined by default
-			module.children = [];
-			module.webpackPolyfill = 1;
-		}
-		return module;
-	}
-
-
-/***/ },
+/* 181 */,
 /* 182 */
 /***/ function(module, exports, __webpack_require__) {
 

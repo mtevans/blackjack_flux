@@ -20,9 +20,28 @@ var dealerHand = React.createClass({
       this.setState({hand: DealerHandStore.getHand()})
   },
 
+  renderCards(){
+    var cards = this.state.hand
+    var toReturn = []
+    if(!cards.length){
+      return []
+    } else {
+      cards.forEach(card => {
+        var value = card.value
+        var suit = card.suit
+        toReturn.push(<div key={value + " " + suit}>{value} of {suit}</div>)
+      })
+    }
+    return toReturn
+  },
+
   render(){
+    var cards = this.renderCards()
     return(
-      <div>Dealers hand</div>
+      <div>
+        <p>DealerHand</p>
+        <div>{cards}</div>
+      </div>
     )
   }
 })

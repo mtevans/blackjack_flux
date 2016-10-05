@@ -1,12 +1,15 @@
 var React = require('react'),
-    UserHandStore = require('../stores/user_hand_store');
+    UserHandStore = require('../stores/user_hand_store'),
+    Cards = require('../constants/cards');
 
 var userHand = React.createClass({
   getInitialState(){
     return({
-      hand: UserHandStore.getHand()
+      hand: UserHandStore.getHand(),
+      turnOver: false
     })
   },
+
   componentDidMount(){
     this.handListener = UserHandStore.addListener(this._onHandChange);
   },
@@ -16,12 +19,32 @@ var userHand = React.createClass({
   },
 
   _onHandChange(){
-      this.setState({hand: UserHandStore.getHand()})
+    this.setState({hand: UserHandStore.getHand()})
   },
 
+  renderHand(){
+    var hand = this.state.hand
+    var toReturn = []
+    if(!hand.length){
+      return []
+    } else {
+      hand.forEach(card => {
+        var value = card.value
+        var suit = card.suit
+        toReturn.push(<div key={value + " " + suit}>{value} of {suit}</div>)
+      })
+    }
+    return toReturn
+  },
+
+
   render(){
+    var hand = this.renderHand()
     return(
-      <div>Users hand</div>
+      <div>
+        <p>UserHand</p>
+        <div>{hand}</div>
+      </div>
     )
   }
 })
